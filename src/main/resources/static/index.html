@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>ASCII Art Archive | FSL Lab</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="bg-gray-100 text-gray-900 min-h-screen p-8" onload="loadRecent()">
+<div class="max-w-6xl mx-auto">
+    <header class="text-center mb-10">
+        <h1 class="text-4xl font-bold text-blue-600 mb-2">ASCII ART 생성기</h1>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="lg:col-span-2 space-y-6">
+            <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-200">
+                <div class="flex gap-4">
+                    <input type="file" id="imageInput" accept="image/*" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-blue-50 file:text-blue-700 font-semibold cursor-pointer">
+                    <button onclick="uploadImage()" class="bg-blue-600 px-6 py-2 rounded-full font-bold text-white hover:bg-blue-700 transition-all shadow-lg active:scale-95">변환</button>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg p-4 overflow-auto border border-gray-300 h-[550px] shadow-inner text-center">
+                <pre id="ascii-result" class="text-[3px] sm:text-[4px] md:text-[5px] text-black mx-auto"></pre>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-200 flex flex-col h-[685px]">
+            <h2 class="text-xl font-bold mb-4 flex justify-between items-center text-gray-700">
+                <span>최근 변환 목록</span>
+                <span class="text-xs text-gray-400" id="count-label">0/100</span>
+            </h2>
+            <div id="history-list" class="space-y-4 overflow-y-auto custom-scrollbar pr-2">
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // JS 로직은 기존과 동일하되, UI 개선을 위해 encode된 데이터를 처리함
+    async function uploadImage() {
+        const input = document.getElementById('imageInput');
+        if (!input.files[0]) return alert("이미지를 선택하세요!");
+        const formData = new FormData();
+        formData.append('file', input.files[0]);
+
+        const response = await fetch('/api/ascii/convert', { method: 'POST', body: formData });
+        if (response.ok) {
+            const text = await response.text();
+            document.getElementById('ascii-result').textContent = text;
+            loadRecent();
+        }
+    }
+
+    async function loadRecent() {
+        try {
+            const response = await fetch('/api/ascii/recent');
+            const data = await response.json();
+            const container = document.getElementById('history-list');
+            document.getElementById('count-label').textContent = `${data.length}/100`;
+
+            container.innerHTML = data.map(item => `
+                <div class="history-item bg-gray-50 p-3 rounded-lg border border-gray-200 cursor-pointer shadow-sm"
+                     onclick="viewHistory(\`${encodeURIComponent(item.content)}\`)">
+                    <p class="text-xs font-bold truncate text-gray-700">${item.fileName}</p>
+                    <p class="text-[10px] text-gray-400">${new Date(item.createdAt).toLocaleString()}</p>
+                </div>
+            `).join('');
+        } catch (e) { console.error("목록 로딩 실패", e); }
+    }
+
+    function viewHistory(content) {
+        document.getElementById('ascii-result').textContent = decodeURIComponent(content);
+    }
+</script>
+</body>
+</html>
